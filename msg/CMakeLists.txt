@@ -86,6 +86,7 @@ set(msg_files
 	multirotor_motor_limits.msg
 	obstacle_distance.msg
 	offboard_control_mode.msg
+	omni_attitude_status.msg
 	onboard_computer_status.msg
 	optical_flow.msg
 	orb_test.msg

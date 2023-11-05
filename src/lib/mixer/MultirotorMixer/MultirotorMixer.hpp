@@ -62,6 +62,14 @@ public:
 		float	yaw_scale;		/**< scales yaw for this rotor */
 		float	thrust_scale;	/**< scales thrust for this rotor */
 	};
+	struct Rotor6Dof {
+		float	roll_scale;	/**< scales roll for this rotor */
+		float	pitch_scale;	/**< scales pitch for this rotor */
+		float	yaw_scale;	/**< scales yaw for this rotor */
+		float	x_scale;	/**< scales x thrust for this rotor */
+		float	y_scale;	/**< scales y thrust for this rotor */
+		float	z_scale;	/**< scales z thrust for this rotor */
+	};
 
 	/**
 	 * Constructor.
@@ -83,6 +91,32 @@ public:
 			float roll_scale, float pitch_scale, float yaw_scale, float idle_speed);
 
 	/**
+	 * Constructor for 6-DoF.
+	 *
+	 * @param control_cb		Callback invoked to read inputs.
+	 * @param cb_handle		Passed to control_cb.
+	 * @param geometry		The selected geometry.
+	 * @param roll_scale		Scaling factor applied to roll inputs
+	 *				compared to thrust.
+	 * @param pitch_scale		Scaling factor applied to pitch inputs
+	 *				compared to thrust.
+	 * @param yaw_scale		Scaling factor applied to yaw inputs compared
+	 *				to thrust.
+	 * @param x_scale		Scaling factor applied to x thrust inputs
+	 *				compared to thrust.
+	 * @param y_scale		Scaling factor applied to y thrust inputs
+	 *				compared to thrust.
+	 * @param z_scale		Scaling factor applied to z thrust inputs
+	 *				compared to thrust.
+	 * @param idle_speed		Minimum rotor control output value; usually
+	 *				tuned to ensure that rotors never stall at the
+	 * 				low end of their control range.
+	 */
+	MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, MultirotorGeometry geometry,
+			float roll_scale, float pitch_scale, float yaw_scale,
+			float x_scale, float y_scale, float z_scale, float idle_speed);
+
+	/**
 	 * Constructor (for testing).
 	 *
 	 * @param control_cb		Callback invoked to read inputs.
@@ -91,6 +125,17 @@ public:
 	 * @param rotor_count		length of rotors array (= number of motors)
 	 */
 	MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, const Rotor *rotors, unsigned rotor_count);
+
+	/**
+	 * Constructor (for testing 6-DoF).
+	 *
+	 * @param control_cb		Callback invoked to read inputs.
+	 * @param cb_handle		Passed to control_cb.
+	 * @param rotors		control allocation matrix
+	 * @param rotor_count		length of rotors array (= number of motors)
+	 */
+	MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, const Rotor6Dof *rotors, unsigned rotor_count);
+
 	virtual ~MultirotorMixer();
 
 	// no copy, assignment, move, move assignment
@@ -161,8 +206,12 @@ public:
 			uint16_t pitch_neg	: 1; // 6 - true when a negative pitch demand change will increase saturation
 			uint16_t yaw_pos	: 1; // 7 - true when a positive yaw demand change will increase saturation
 			uint16_t yaw_neg	: 1; // 8 - true when a negative yaw demand change will increase saturation
-			uint16_t thrust_pos	: 1; // 9 - true when a positive thrust demand change will increase saturation
-			uint16_t thrust_neg	: 1; //10 - true when a negative thrust demand change will increase saturation
+			uint16_t x_thrust_pos	: 1; // 9 - true when a positive x thrust demand change will increase saturation
+			uint16_t x_thrust_neg	: 1; //10 - true when a negative x thrust demand change will increase saturation
+			uint16_t y_thrust_pos	: 1; //11 - true when a positive y thrust demand change will increase saturation
+			uint16_t y_thrust_neg	: 1; //12 - true when a negative y thrust demand change will increase saturation
+			uint16_t z_thrust_pos	: 1; //13 - true when a positive z thrust demand change will increase saturation
+			uint16_t z_thrust_neg	: 1; //14 - true when a negative z thrust demand change will increase saturation
 		} flags;
 		uint16_t value;
 	};
@@ -209,6 +258,16 @@ private:
 	inline void mix_airmode_rp(float roll, float pitch, float yaw, float thrust, float *outputs);
 
 	/**
+	 * Mix roll, pitch, yaw, x_thrust, y_thrust, z_thrust and set the outputs vector for 6-DoF vehicles.
+	 *
+	 * Desaturation behavior: airmode for roll/pitch:
+	 * thrust is increased/decreased as much as required to meet the demanded roll/pitch.
+	 * Yaw is not allowed to increase the thrust, @see mix_yaw() for the exact behavior.
+	 */
+	inline void mix_airmode_rp(float roll, float pitch, float yaw, float x_thrust, float y_thrust, float z_thrust,
+				   float *outputs);
+
+	/**
 	 * Mix roll, pitch, yaw, thrust and set the outputs vector.
 	 *
 	 * Desaturation behavior: full airmode for roll/pitch/yaw:
@@ -228,6 +287,17 @@ private:
 	inline void mix_airmode_disabled(float roll, float pitch, float yaw, float thrust, float *outputs);
 
 	/**
+	 * Mix roll, pitch, yaw, x_thrust, y_thrust, z_thrust and set the outputs vector for 6-DoF vehicles.
+	 *
+	 * Desaturation behavior: no airmode, thrust is NEVER increased to meet the demanded
+	 * roll/pitch/yaw. Instead roll/pitch/yaw is reduced as much as needed.
+	 * Thrust can be reduced to unsaturate the upper side.
+	 * @see mix_yaw() for the exact yaw behavior.
+	 */
+	inline void mix_airmode_disabled(float roll, float pitch, float yaw, float x_thrust, float y_thrust, float z_thrust,
+					 float *outputs);
+
+	/**
 	 * Mix yaw by updating an existing output vector (that already contains roll/pitch/thrust).
 	 *
 	 * Desaturation behavior: thrust is allowed to be decreased up to 15% in order to allow
@@ -241,9 +311,13 @@ private:
 
 	void update_saturation_status(unsigned index, bool clipping_high, bool clipping_low_roll_pitch, bool clipping_low_yaw);
 
+	bool				_is_6dof{false};
 	float				_roll_scale{1.0f};
 	float				_pitch_scale{1.0f};
 	float				_yaw_scale{1.0f};
+	float				_x_scale{1.0f};
+	float				_y_scale{1.0f};
+	float				_z_scale{1.0f};
 	float				_idle_speed{0.0f};
 	float 				_delta_out_max{0.0f};
 	float 				_thrust_factor{0.0f};
@@ -254,6 +328,7 @@ private:
 
 	unsigned			_rotor_count;
 	const Rotor			*_rotors;
+	const Rotor6Dof			*_rotors_6dof;
 
 	float 				*_outputs_prev{nullptr};
 	float 				*_tmp_array{nullptr};

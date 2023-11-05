@@ -223,7 +223,7 @@ def normalize_mix_px4(B):
 
     return B_px
 
-def generate_mixer_multirotor_header(geometries_list, use_normalized_mix=False, use_6dof=False):
+def generate_mixer_multirotor_header(geometries_list, use_normalized_mix=False):
     '''
     Generate C header file with same format as multi_tables.py
     TODO: rewrite using templates (see generation of uORB headers)
@@ -261,16 +261,20 @@ def generate_mixer_multirotor_header(geometries_list, use_normalized_mix=False, 
         buf.write(u"static constexpr MultirotorMixer::Rotor _config_{}[] {{\n".format(geometry['info']['name']))
 
         for row in mix:
-            if use_6dof:
-            # 6dof mixer
-                buf.write(u"\t{{ {:9f}, {:9f}, {:9f}, {:9f}, {:9f}, {:9f} }},\n".format(
-                    row[0], row[1], row[2],
-                    row[3], row[4], row[5]))
-            else:
             # 4dof mixer
-                buf.write(u"\t{{ {:9f}, {:9f}, {:9f}, {:9f} }},\n".format(
-                    row[0], row[1], row[2],
-                    -row[5]))  # Upward thrust is positive TODO: to remove this, adapt PX4 to use NED correctly
+            buf.write(u"\t{{ {:9f}, {:9f}, {:9f}, {:9f} }},\n".format(
+                row[0], row[1], row[2],
+                -row[5]))  # Upward thrust is positive TODO: to remove this, adapt PX4 to use NED correctly
+
+        buf.write(u"};\n\n")
+
+        buf.write(u"static constexpr MultirotorMixer::Rotor6Dof _config_6dof_{}[] {{\n".format(geometry['info']['name']))
+
+        for row in mix:
+            # 6dof mixer
+            buf.write(u"\t{{ {:9f}, {:9f}, {:9f}, {:9f}, {:9f}, {:9f} }},\n".format(
+                row[0], row[1], row[2],
+                row[3], row[4], row[5]))
 
         buf.write(u"};\n\n")
 
@@ -278,6 +282,12 @@ def generate_mixer_multirotor_header(geometries_list, use_normalized_mix=False, 
     buf.write(u"static constexpr const MultirotorMixer::Rotor *_config_index[] {\n")
     for geometry in geometries_list:
         buf.write(u"\t&_config_{}[0],\n".format(geometry['info']['name']))
+    buf.write(u"};\n\n")
+
+    # Print geometry indices for 6Dof
+    buf.write(u"static constexpr const MultirotorMixer::Rotor6Dof *_config_index_6dof[] {\n")
+    for geometry in geometries_list:
+        buf.write(u"\t&_config_6dof_{}[0],\n".format(geometry['info']['name']))
     buf.write(u"};\n\n")
 
     # Print geometry rotor counts
@@ -317,8 +327,6 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', help='Print details on standard output',
                         action='store_true')
     parser.add_argument('--normalize', help='Use normalized mixers (compatibility mode)',
-                        action='store_true')
-    parser.add_argument('--sixdof', help='Use 6dof mixers',
                         action='store_true')
     args = parser.parse_args()
 
@@ -386,8 +394,7 @@ if __name__ == '__main__':
 
     # Generate header file
     header = generate_mixer_multirotor_header(geometries_list,
-                                              use_normalized_mix=args.normalize,
-                                              use_6dof=args.sixdof)
+                                              use_normalized_mix=args.normalize)
 
     if args.outputfile is not None:
         # Write header file

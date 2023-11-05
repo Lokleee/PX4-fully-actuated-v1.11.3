@@ -88,7 +88,7 @@ void PositionControl::setInputSetpoint(const vehicle_local_position_setpoint_s &
 	_yawspeed_sp = setpoint.yawspeed;
 }
 
-void PositionControl::setConstraints(const vehicle_constraints_s &constraints)
+void PositionControl::setConstraints(const vehicle_constraints_s &constraints, const float lim_thr_hor_max)
 {
 	_constraints = constraints;
 
@@ -105,6 +105,8 @@ void PositionControl::setConstraints(const vehicle_constraints_s &constraints)
 	if (!PX4_ISFINITE(constraints.speed_down) || (constraints.speed_down > _lim_vel_down)) {
 		_constraints.speed_down = _lim_vel_down;
 	}
+
+	_lim_thr_hor_max = lim_thr_hor_max;
 
 	// ignore _constraints.speed_xy TODO: remove it completely as soon as no task uses it anymore to avoid confusion
 }
@@ -243,8 +245,12 @@ void PositionControl::getLocalPositionSetpoint(vehicle_local_position_setpoint_s
 	_thr_sp.copyTo(local_position_setpoint.thrust);
 }
 
-void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const
+void PositionControl::getAttitudeSetpoint(const matrix::Quatf &att, const int omni_att_mode,
+		const float omni_dfc_max_thrust, float &omni_att_tilt_angle, float &omni_att_tilt_dir, float &omni_att_roll,
+		float &omni_att_pitch, const float omni_att_rate, const int omni_proj_axes,
+		vehicle_attitude_setpoint_s &attitude_setpoint, omni_attitude_status_s &omni_status) const
 {
-	ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, attitude_setpoint);
+	ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, att, omni_att_mode, omni_dfc_max_thrust, omni_att_tilt_angle,
+				      omni_att_tilt_dir, omni_att_roll, omni_att_pitch, omni_att_rate, omni_proj_axes, attitude_setpoint, omni_status);
 	attitude_setpoint.yaw_sp_move_rate = _yawspeed_sp;
 }

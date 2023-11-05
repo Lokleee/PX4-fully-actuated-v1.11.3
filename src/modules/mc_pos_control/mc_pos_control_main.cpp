@@ -67,6 +67,7 @@
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
 #include <uORB/topics/hover_thrust_estimate.h>
+#include <uORB/topics/omni_attitude_status.h>
 
 #include "PositionControl/PositionControl.hpp"
 #include "Takeoff/Takeoff.hpp"
@@ -85,6 +86,7 @@ class MulticopterPositionControl : public ModuleBase<MulticopterPositionControl>
 	public ModuleParams, public px4::WorkItem
 {
 public:
+	vehicle_attitude_s att;
 	MulticopterPositionControl(bool vtol = false);
 	~MulticopterPositionControl() override;
 
@@ -114,6 +116,8 @@ private:
 	uORB::Publication<landing_gear_s>			_landing_gear_pub{ORB_ID(landing_gear)};
 	uORB::Publication<vehicle_local_position_setpoint_s>	_local_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};	/**< vehicle local position setpoint publication */
 	uORB::Publication<vehicle_local_position_setpoint_s>	_traj_sp_pub{ORB_ID(trajectory_setpoint)};			/**< trajectory setpoints publication */
+
+	uORB::Publication<omni_attitude_status_s>	_omni_attitude_status_pub{ORB_ID(omni_attitude_status)};
 
 	uORB::SubscriptionCallbackWorkItem _local_pos_sub{this, ORB_ID(vehicle_local_position)};	/**< vehicle local position */
 
@@ -145,6 +149,11 @@ private:
 	landing_gear_s _landing_gear{};
 	int8_t _old_landing_gear_position{landing_gear_s::GEAR_KEEP};
 
+	float _param_tilt_angle = 0, _param_tilt_dir = 0; // Keeping the last parameter values in degrees
+	float _tilt_angle = 0, _tilt_dir = 0; // Keeping the currently used values in radians
+	float _param_roll_angle = 0, _param_pitch_angle = 0; // Keeping the last parameter values in degrees
+	float _tilt_roll = 0, _tilt_pitch = 0; // Keeping the currently used values in radians
+
 	DEFINE_PARAMETERS(
 		// Position Control
 		(ParamFloat<px4::params::MPC_XY_P>) _param_mpc_xy_p,
@@ -175,7 +184,17 @@ private:
 		(ParamInt<px4::params::MPC_ALT_MODE>) _param_mpc_alt_mode,
 		(ParamFloat<px4::params::MPC_TILTMAX_LND>) _param_mpc_tiltmax_lnd, /**< maximum tilt for landing and smooth takeoff */
 		(ParamFloat<px4::params::MPC_THR_MIN>) _param_mpc_thr_min,
-		(ParamFloat<px4::params::MPC_THR_MAX>) _param_mpc_thr_max
+		(ParamFloat<px4::params::MPC_THR_MAX>) _param_mpc_thr_max,
+
+		// Omni-directional vehicle parameters
+		(ParamInt<px4::params::OMNI_ATT_MODE>) _param_omni_att_mode,
+		(ParamFloat<px4::params::OMNI_DFC_MAX_THR>) _param_omni_dfc_max_thr,
+		(ParamFloat<px4::params::OMNI_ATT_TLT_ANG>) _param_omni_att_tilt_angle,
+		(ParamFloat<px4::params::OMNI_ATT_TLT_DIR>) _param_omni_att_tilt_dir,
+		(ParamFloat<px4::params::OMNI_ATT_ROLL>) _param_omni_att_roll,
+		(ParamFloat<px4::params::OMNI_ATT_PITCH>) _param_omni_att_pitch,
+		(ParamInt<px4::params::OMNI_PROJ_AXES>) _param_omni_proj_axes,
+		(ParamFloat<px4::params::OMNI_ATT_RATE>) _param_omni_att_rate
 	);
 
 	control::BlockDerivative _vel_x_deriv; /**< velocity derivative in x */
@@ -391,6 +410,22 @@ MulticopterPositionControl::parameters_update(bool force)
 
 		if (_wv_controller != nullptr) {
 			_wv_controller->update_parameters();
+		}
+
+		if (abs(_param_omni_att_tilt_angle.get() - _param_tilt_angle) > FLT_EPSILON
+		    || abs(_param_omni_att_tilt_dir.get() - _param_tilt_dir) > FLT_EPSILON) {
+			_param_tilt_angle = _param_omni_att_tilt_angle.get();
+			_param_tilt_dir = _param_omni_att_tilt_dir.get();
+			_tilt_angle = math::radians(_param_tilt_angle);
+			_tilt_dir = math::radians(_param_tilt_dir);
+		}
+
+		if (abs(_param_omni_att_roll.get() - _param_roll_angle) > FLT_EPSILON
+		    || abs(_param_omni_att_pitch.get() - _param_pitch_angle) > FLT_EPSILON) {
+			_param_roll_angle = _param_omni_att_roll.get();
+			_param_pitch_angle = _param_omni_att_pitch.get();
+			_tilt_roll = math::radians(_param_roll_angle);
+			_tilt_pitch = math::radians(_param_pitch_angle);
 		}
 	}
 
@@ -642,7 +677,8 @@ MulticopterPositionControl::Run()
 
 			// Run position control
 			_control.setState(_states);
-			_control.setConstraints(constraints);
+			float max_hor_thrust = (_param_omni_att_mode.get() == 2) ? _param_omni_dfc_max_thr.get() : 1.0F;
+			_control.setConstraints(constraints, max_hor_thrust);
 			_control.setInputSetpoint(setpoint);
 
 			if (!_control.update(dt)) {
@@ -681,7 +717,15 @@ MulticopterPositionControl::Run()
 
 			vehicle_attitude_setpoint_s attitude_setpoint{};
 			attitude_setpoint.timestamp = time_stamp_now;
-			_control.getAttitudeSetpoint(attitude_setpoint);
+			omni_attitude_status_s omni_status{};
+			omni_status.timestamp = time_stamp_now;
+			_control.getAttitudeSetpoint(matrix::Quatf(att.q), _param_omni_att_mode.get(), _param_omni_dfc_max_thr.get(),
+						     _tilt_angle, _tilt_dir, _tilt_roll, _tilt_pitch, _param_omni_att_rate.get(), _param_omni_proj_axes.get(),
+						     attitude_setpoint, omni_status);
+
+			omni_status.att_mode = _param_omni_att_mode.get();
+
+			_omni_attitude_status_pub.publish(omni_status);
 
 			// publish attitude setpoint
 			// It's important to publish also when disarmed otheriwse the attitude setpoint stays uninitialized.
@@ -916,6 +960,23 @@ MulticopterPositionControl::start_flight_task()
 
 	} else if (should_disable_task) {
 		_flight_tasks.switchTask(FlightTaskIndex::None);
+	}
+}
+
+void
+MulticopterPositionControl::limit_thrust_during_landing(vehicle_attitude_setpoint_s &setpoint)
+{
+	if (_vehicle_land_detected.ground_contact
+	    || _vehicle_land_detected.maybe_landed) {
+		// we set the collective thrust to zero, this will help to decide if we are actually landed or not
+		setpoint.thrust_body[0] = 0.f;
+		setpoint.thrust_body[1] = 0.f;
+		setpoint.thrust_body[2] = 0.f;
+		// go level to avoid corrections but keep the heading we have
+		Quatf(AxisAngle<float>(0, 0, _states.yaw)).copyTo(setpoint.q_d);
+		setpoint.yaw_sp_move_rate = 0.f;
+		// prevent any position control integrator windup
+		_control.resetIntegral();
 	}
 }
 

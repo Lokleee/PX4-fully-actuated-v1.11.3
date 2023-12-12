@@ -21,9 +21,9 @@ then
 	param set RTL_DESCEND_ALT 10
 	param set RTL_LAND_DELAY 0
 
-	param set TRIG_INTERFACE 3
+	param set TRIG_INTERFACE 3  #相机触发操作
 	param set TRIG_MODE 4
-	param set MNT_MODE_IN 0
+	param set MNT_MODE_IN 0  #地面站与自动驾驶仪之间使用的协议
 	param set MAV_PROTO_VER 2
 fi
 

@@ -38,6 +38,7 @@ set(geometry_files
 	hex_plus.toml
 	hex_t.toml
 	hex_x.toml
+	hex_x_tilt.toml
 	octa_cox.toml
 	octa_cox_wide.toml
 	octa_plus.toml
@@ -76,25 +77,16 @@ add_custom_command(
 	)
 add_custom_target(mixer_gen DEPENDS mixer_multirotor.generated.h ${CMAKE_CURRENT_BINARY_DIR}/mixer_multirotor_normalized.generated.h)
 
-# 6DOF mixers
-add_custom_command(
-	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mixer_multirotor_6dof.generated.h
-	COMMAND ${PYTHON_EXECUTABLE} ${MIXER_TOOLS}/px_generate_mixers.py --sixdof -f ${geometries_list} -o mixer_multirotor_6dof.generated.h
-	DEPENDS ${MIXER_TOOLS}/px_generate_mixers.py ${geometries_list}
-	)
-add_custom_target(mixer_gen_6dof DEPENDS mixer_multirotor_6dof.generated.h)
-
 add_library(MultirotorMixer
 	MultirotorMixer.cpp
 	MultirotorMixer.hpp
 
 	${CMAKE_CURRENT_BINARY_DIR}/mixer_multirotor.generated.h
 	${CMAKE_CURRENT_BINARY_DIR}/mixer_multirotor_normalized.generated.h
-	${CMAKE_CURRENT_BINARY_DIR}/mixer_multirotor_6dof.generated.h
 )
 target_link_libraries(MultirotorMixer PRIVATE MixerBase)
 target_include_directories(MultirotorMixer PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-add_dependencies(MultirotorMixer mixer_gen mixer_gen_6dof prebuild_targets)
+add_dependencies(MultirotorMixer mixer_gen prebuild_targets)
 
 if(BUILD_TESTING)
 

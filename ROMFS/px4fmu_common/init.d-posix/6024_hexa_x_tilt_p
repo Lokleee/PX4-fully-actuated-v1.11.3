@@ -37,11 +37,7 @@ then
 	param set SDLOG_PROFILE 179
 
 	param set OMNI_ATT_MODE 2
-<<<<<<< HEAD
 	param set OMNI_DFC_MAX_THR 0.65
-=======
-	param set OMNI_DFC_MAX_THR 0.20
->>>>>>> 67710fa5f320e92db48ac4e5e9cde1c4f7794931
 fi
 
 set MAV_TYPE 13

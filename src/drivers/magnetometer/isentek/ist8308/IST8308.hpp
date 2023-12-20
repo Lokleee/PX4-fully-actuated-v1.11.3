@@ -42,6 +42,7 @@
 
 #include "iSentek_IST8308_registers.hpp"
 
+#include <float.h>
 #include <drivers/drv_hrt.h>
 #include <lib/drivers/device/i2c.h>
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>

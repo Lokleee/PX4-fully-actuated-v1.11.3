@@ -43,16 +43,16 @@ set(geometry_files
 	octa_cox_wide.toml
 	octa_plus.toml
 	octa_x.toml
-	quad_deadcat.toml
-	quad_h.toml
-	quad_plus.toml
-	quad_s250aq.toml
-	quad_vtail.toml
-	quad_wide.toml
-	quad_x_cw.toml
-	quad_x.toml
-	quad_x_pusher.toml
-	quad_y.toml
+	# quad_deadcat.toml
+	# quad_h.toml
+	# quad_plus.toml
+	# quad_s250aq.toml
+	# quad_vtail.toml
+	# quad_wide.toml
+	# quad_x_cw.toml
+	# quad_x.toml
+	# quad_x_pusher.toml
+	# quad_y.toml
 	tri_y.toml
 	twin_engine.toml
 )

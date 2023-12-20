@@ -176,7 +176,7 @@ void IST8308::RunImpl()
 				float z = combine(buffer.DATAZH, buffer.DATAZL);
 
 				// sensor's frame is +x forward, +y right, +z up
-				z = (z == INT16_MIN) ? INT16_MAX : -z; // flip z
+				z = (fabsf(z - INT16_MIN) < FLT_EPSILON) ? INT16_MAX : -z; // flip z
 
 				_px4_mag.update(timestamp_sample, x, y, z);
 			}

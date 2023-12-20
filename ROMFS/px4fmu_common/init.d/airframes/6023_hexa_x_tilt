@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# @name Hexarotor x with tilted arms
+# @name Hexa X Tilt
 #
-# @type Tilt-Hexarotor x
+# @type Tilt-Hexarotor
 # @class Copter
 #
 # @output MAIN1 motor 1

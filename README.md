@@ -1,4 +1,4 @@
-My job is to emulate [his work](https://github.com/castacks/PX4-fully-actuated.git) and port the code of px4-fully-actuated to `v1.11.3` version.It has been tested to work well on `Ubuntu 20.04` and `Gazebo 11`.
+My job is to emulate [his work](https://github.com/castacks/PX4-fully-actuated.git) and port the code of px4-fully-actuated to `v1.11.3` version. It has been tested to work well on `Ubuntu 20.04` and `Gazebo 11`.
 
 ## Installation
 

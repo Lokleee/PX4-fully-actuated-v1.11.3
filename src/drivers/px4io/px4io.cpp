@@ -2006,6 +2006,7 @@ PX4IO::io_reg_set(uint8_t page, uint8_t offset, uint16_t value)
 	return io_reg_set(page, offset, &value, 1);
 }
 
+/* the function is important */
 int
 PX4IO::io_reg_get(uint8_t page, uint8_t offset, uint16_t *values, unsigned num_values)
 {

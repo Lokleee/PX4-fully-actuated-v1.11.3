@@ -95,6 +95,7 @@ px4_add_romfs_files(
 	6001_hexa_x
 	6002_draco_r
 	6023_hexa_x_tilt
+	6026_skyvortex_v1
 
 	# [7000, 7999] Hexarotor +"
 	7001_hexa_+

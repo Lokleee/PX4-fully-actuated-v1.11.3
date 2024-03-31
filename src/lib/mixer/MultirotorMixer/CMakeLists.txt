@@ -39,10 +39,11 @@ set(geometry_files
 	hex_t.toml
 	hex_x.toml
 	hex_x_tilt.toml
+	hex_x_tilt_mirror.toml
 	octa_cox.toml
 	octa_cox_wide.toml
 	octa_plus.toml
-	octa_x.toml
+	# octa_x.toml
 	# quad_deadcat.toml
 	# quad_h.toml
 	# quad_plus.toml

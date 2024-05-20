@@ -11,8 +11,12 @@
     <arg name="Y" default="0"/>
     <!-- vehicle model and world -->
     <arg name="est" default="ekf2"/>
-    <arg name="vehicle" default="hexa_x_tilt_p"/>
-    <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/empty.world"/>
+    <arg name="vehicle" default="skyvortex"/>
+    <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/skyvortex_tube.world"/>
+    <!-- <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/skyvortex_bridge.world"/>
+    <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/skyvortex_windturbing.world"/>
+    <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/skyvortex.world"/>
+    <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/empty.world"/> -->
     <arg name="sdf" default="$(find mavlink_sitl_gazebo)/models/$(arg vehicle)/$(arg vehicle).sdf"/>
 
     <!-- gazebo configs -->

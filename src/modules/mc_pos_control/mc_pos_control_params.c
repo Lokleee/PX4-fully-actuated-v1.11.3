@@ -287,7 +287,7 @@ PARAM_DEFINE_FLOAT(MPC_XY_TRAJ_P, 0.5f);
  * the setpoint will be capped to MPC_XY_VEL_MAX
  *
  * @unit m/s
- * @min 3.0
+ * @min 0.0
  * @max 20.0
  * @increment 1
  * @decimal 2
@@ -466,7 +466,7 @@ PARAM_DEFINE_FLOAT(MPC_VELD_LP, 5.0f);
  * Maximum deceleration for MPC_POS_MODE 1. Maximum acceleration and deceleration for MPC_POS_MODE 3.
  *
  * @unit m/s/s
- * @min 2.0
+ * @min 0.1
  * @max 15.0
  * @increment 1
  * @decimal 2
@@ -766,6 +766,16 @@ PARAM_DEFINE_FLOAT(MPC_SPOOLUP_TIME, 1.0f);
  * @group Mission
  */
 PARAM_DEFINE_INT32(MPC_YAW_MODE, 0);
+
+/**
+ * Acceleration to tilt coupling
+ *
+ * Set to decouple tilt from vertical acceleration.
+ *
+ * @boolean
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_INT32(MPC_ACC_DECOUPLE, 1);
 
 /**
  * Maximum direct-force (horizontal) scaled thrust for omnidirectional vehicles

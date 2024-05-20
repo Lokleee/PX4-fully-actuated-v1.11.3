@@ -1123,7 +1123,10 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 		PX4_ISFINITE(set_actuator_control_target.controls[4]) &&
 		PX4_ISFINITE(set_actuator_control_target.controls[5]) &&
 		PX4_ISFINITE(set_actuator_control_target.controls[6]) &&
-		PX4_ISFINITE(set_actuator_control_target.controls[7]);
+		PX4_ISFINITE(set_actuator_control_target.controls[7]) &&
+		PX4_ISFINITE(set_actuator_control_target.controls[8]) &&
+		PX4_ISFINITE(set_actuator_control_target.controls[9]) &&
+		PX4_ISFINITE(set_actuator_control_target.controls[10]);
 
 	if ((mavlink_system.sysid == set_actuator_control_target.target_system ||
 	     set_actuator_control_target.target_system == 0) &&
@@ -1165,7 +1168,7 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 			actuator_controls.timestamp = hrt_absolute_time();
 
 			/* Set duty cycles for the servos in the actuator_controls message */
-			for (size_t i = 0; i < 8; i++) {
+			for (size_t i = 0; i < 11; i++) {
 				actuator_controls.control[i] = set_actuator_control_target.controls[i];
 			}
 

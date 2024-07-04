@@ -166,11 +166,6 @@ public:
 	void resetIntegral() { _vel_int.setZero(); }
 
 	/**
-	 * If set, the tilt setpoint is computed by assuming no vertical acceleration
-	 */
-	void decoupleHorizontalAndVecticalAcceleration(bool val) { _decouple_horizontal_and_vertical_acceleration = val; }
-
-	/**
 	 * Get the controllers output local position setpoint
 	 * These setpoints are the ones which were executed on including PID output and feed-forward.
 	 * The acceleration or thrust setpoints can be used for attitude control.
@@ -221,7 +216,6 @@ private:
 	float _lim_thr_hor_max; ///< Maximum direct-force horizontal thrust allowed as output [0, 1]
 
 	float _hover_thrust{}; ///< Thrust [0,1] with which the vehicle hovers not accelerating down or up with level orientation
-	bool _decouple_horizontal_and_vertical_acceleration{true}; ///< Ignore vertical acceleration setpoint to remove its effect on the tilt setpoint
 
 	// States
 	matrix::Vector3f _pos; /**< current position */

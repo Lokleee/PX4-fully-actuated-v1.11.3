@@ -190,7 +190,9 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 	const float thr_pct_hover = _hover_thrust_estimate_valid ? 0.6f : 0.3f;
 	const float sys_low_throttle = _params.minThrottle + (_params.hoverThrottle - _params.minThrottle) * thr_pct_hover;
 	bool ground_contact = (_actuator_controls_throttle <= sys_low_throttle);
-
+	// PX4_INFO("the _actuator_controls_throttle: %f ",double(_actuator_controls_throttle));
+	// PX4_INFO("the sys_low_throttle: %f ",double(_actuator_controls_throttle));
+	// PX4_INFO("the ground_contact: %f ",double(_actuator_controls_throttle));
 	// if we have a valid velocity setpoint and the vehicle is demanded to go down but no vertical movement present,
 	// we then can assume that the vehicle hit ground
 	if (_flag_control_climb_rate_enabled) {
@@ -215,7 +217,7 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 	} else {
 		_in_descend = false;
 	}
-
+	// PX4_INFO("the _actuator_controls_throttle: %f ",double(_actuator_controls_throttle));
 
 	// When not armed, consider to have ground-contact
 	if (!_armed) {

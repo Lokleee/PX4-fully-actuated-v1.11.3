@@ -151,6 +151,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_set_attitude_target(msg);
 		break;
 
+	case MAVLINK_MSG_ID_SET_OMNI_ATTITUDE_TARGET:
+		handle_message_set_omni_attitude_target(msg);
+		break;
+
 	case MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET:
 		handle_message_set_actuator_control_target(msg);
 		break;
@@ -1401,6 +1405,72 @@ void MavlinkReceiver::fill_thrust(float *thrust_body_array, uint8_t vehicle_type
 	}
 }
 
+void MavlinkReceiver::fill_thrust_omni(float *thrust_body_array, int att_mode, uint8_t vehicle_type, float thrust_x, float thrust_y, float thrust_z)
+{
+	// Fill correct field by checking frametype
+	// TODO: add as needed
+	switch (_mavlink->get_system_type()) {
+	case MAV_TYPE_GENERIC:
+		break;
+
+	case MAV_TYPE_FIXED_WING:
+	case MAV_TYPE_GROUND_ROVER:
+		thrust_body_array[0] = thrust_z;
+		break;
+
+	case MAV_TYPE_QUADROTOR:
+	case MAV_TYPE_HEXAROTOR:
+	case MAV_TYPE_OCTOROTOR:
+	case MAV_TYPE_TRICOPTER:
+	case MAV_TYPE_HELICOPTER:
+	case MAV_TYPE_COAXIAL:
+		switch(att_mode){
+		case 0:
+			thrust_body_array[2] = -thrust_z;
+
+			break;
+
+		default:
+			thrust_body_array[0] = thrust_x;
+			thrust_body_array[1] = thrust_y;
+			thrust_body_array[2] = -thrust_z;
+
+			break;
+		}
+
+		break;
+
+	case MAV_TYPE_SUBMARINE:
+		thrust_body_array[0] = thrust_z;
+		break;
+
+	case MAV_TYPE_VTOL_DUOROTOR:
+	case MAV_TYPE_VTOL_QUADROTOR:
+	case MAV_TYPE_VTOL_TILTROTOR:
+	case MAV_TYPE_VTOL_RESERVED2:
+	case MAV_TYPE_VTOL_RESERVED3:
+	case MAV_TYPE_VTOL_RESERVED4:
+	case MAV_TYPE_VTOL_RESERVED5:
+		switch (vehicle_type) {
+		case vehicle_status_s::VEHICLE_TYPE_FIXED_WING:
+			thrust_body_array[0] = thrust_z;
+
+			break;
+
+		case vehicle_status_s::VEHICLE_TYPE_ROTARY_WING:
+			thrust_body_array[2] = -thrust_z;
+
+			break;
+
+		default:
+			// This should never happen
+			break;
+		}
+
+		break;
+	}
+}
+
 void
 MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 {
@@ -1539,6 +1609,157 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 
 					if (!offboard_control_mode.ignore_thrust) { // don't overwrite thrust if it's invalid
 						fill_thrust(rates_sp.thrust_body, vehicle_status.vehicle_type, set_attitude_target.thrust);
+					}
+
+					_rates_sp_pub.publish(rates_sp);
+				}
+			}
+		}
+	}
+}
+
+void
+MavlinkReceiver::handle_message_set_omni_attitude_target(mavlink_message_t *msg)
+{
+	mavlink_set_omni_attitude_target_t set_omni_attitude_target;
+	mavlink_msg_set_omni_attitude_target_decode(msg, &set_omni_attitude_target);
+
+	bool values_finite =
+		PX4_ISFINITE(set_omni_attitude_target.q[0]) &&
+		PX4_ISFINITE(set_omni_attitude_target.q[1]) &&
+		PX4_ISFINITE(set_omni_attitude_target.q[2]) &&
+		PX4_ISFINITE(set_omni_attitude_target.q[3]) &&
+		PX4_ISFINITE(set_omni_attitude_target.thrust[0]) &&
+		PX4_ISFINITE(set_omni_attitude_target.thrust[1]) &&
+		PX4_ISFINITE(set_omni_attitude_target.thrust[2]) &&
+		PX4_ISFINITE(set_omni_attitude_target.body_roll_rate) &&
+		PX4_ISFINITE(set_omni_attitude_target.body_pitch_rate) &&
+		PX4_ISFINITE(set_omni_attitude_target.body_yaw_rate);
+
+	/* Only accept messages which are intended for this system */
+	if ((mavlink_system.sysid == set_omni_attitude_target.target_system ||
+	     set_omni_attitude_target.target_system == 0) &&
+	    (mavlink_system.compid == set_omni_attitude_target.target_component ||
+	     set_omni_attitude_target.target_component == 0) &&
+	    values_finite) {
+
+		offboard_control_mode_s offboard_control_mode{};
+
+		/* set correct ignore flags for thrust field: copy from mavlink message */
+		offboard_control_mode.ignore_thrust = (bool)(set_omni_attitude_target.type_mask & (1 << 6));
+
+		/*
+		 * The tricky part in parsing this message is that the offboard sender *can* set attitude and thrust
+		 * using different messages. Eg.: First send set_omni_attitude_target containing the attitude and ignore
+		 * bits set for everything else and then send set_omni_attitude_target containing the thrust and ignore bits
+		 * set for everything else.
+		 */
+
+		/*
+		 * if attitude or body rate have been used (not ignored) previously and this message only sends
+		 * throttle and has the ignore bits set for attitude and rates don't change the flags for attitude and
+		 * body rates to keep the controllers running
+		 */
+		bool ignore_bodyrate_msg_x = (bool)(set_omni_attitude_target.type_mask & 0x1);
+		bool ignore_bodyrate_msg_y = (bool)(set_omni_attitude_target.type_mask & 0x2);
+		bool ignore_bodyrate_msg_z = (bool)(set_omni_attitude_target.type_mask & 0x4);
+		bool ignore_attitude_msg = (bool)(set_omni_attitude_target.type_mask & (1 << 7));
+
+
+		if ((ignore_bodyrate_msg_x || ignore_bodyrate_msg_y ||
+		     ignore_bodyrate_msg_z) &&
+		    ignore_attitude_msg && !offboard_control_mode.ignore_thrust) {
+
+			/* Message want's us to ignore everything except thrust: only ignore if previously ignored */
+			offboard_control_mode.ignore_bodyrate_x = ignore_bodyrate_msg_x && offboard_control_mode.ignore_bodyrate_x;
+			offboard_control_mode.ignore_bodyrate_y = ignore_bodyrate_msg_y && offboard_control_mode.ignore_bodyrate_y;
+			offboard_control_mode.ignore_bodyrate_z = ignore_bodyrate_msg_z && offboard_control_mode.ignore_bodyrate_z;
+			offboard_control_mode.ignore_attitude = ignore_attitude_msg && offboard_control_mode.ignore_attitude;
+
+		} else {
+			offboard_control_mode.ignore_bodyrate_x = ignore_bodyrate_msg_x;
+			offboard_control_mode.ignore_bodyrate_y = ignore_bodyrate_msg_y;
+			offboard_control_mode.ignore_bodyrate_z = ignore_bodyrate_msg_z;
+			offboard_control_mode.ignore_attitude = ignore_attitude_msg;
+		}
+
+		offboard_control_mode.ignore_position = true;
+		offboard_control_mode.ignore_velocity = true;
+		offboard_control_mode.ignore_acceleration_force = true;
+
+		offboard_control_mode.timestamp = hrt_absolute_time();
+
+		_offboard_control_mode_pub.publish(offboard_control_mode);
+
+		/* If we are in offboard control mode and offboard control loop through is enabled
+		 * also publish the setpoint topic which is read by the controller */
+		if (_mavlink->get_forward_externalsp()) {
+
+			vehicle_control_mode_s control_mode{};
+			_control_mode_sub.copy(&control_mode);
+
+			if (control_mode.flag_control_offboard_enabled) {
+				vehicle_status_s vehicle_status{};
+				omni_attitude_status_s omni_attitude_status{};
+				_vehicle_status_sub.copy(&vehicle_status);
+				_omni_attitude_status_sub.copy(&omni_attitude_status);
+
+				/* Publish attitude setpoint if attitude and thrust ignore bits are not set */
+				if (!(offboard_control_mode.ignore_attitude)) {
+					vehicle_attitude_setpoint_s att_sp = {};
+					att_sp.timestamp = hrt_absolute_time();
+
+					if (!ignore_attitude_msg) { // only copy att sp if message contained new data
+						matrix::Quatf q(set_omni_attitude_target.q);
+						q.copyTo(att_sp.q_d);
+
+						matrix::Eulerf euler{q};
+						att_sp.roll_body = euler.phi();
+						att_sp.pitch_body = euler.theta();
+						att_sp.yaw_body = euler.psi();
+						att_sp.yaw_sp_move_rate = 0.0f;
+					}
+
+					if (!offboard_control_mode.ignore_thrust) { // don't overwrite thrust if it's invalid
+						fill_thrust_omni(att_sp.thrust_body, omni_attitude_status.att_mode, vehicle_status.vehicle_type, set_omni_attitude_target.thrust[0], set_omni_attitude_target.thrust[1], set_omni_attitude_target.thrust[2]);
+					}
+
+					// Publish attitude setpoint
+					if (vehicle_status.is_vtol && (vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING)) {
+						_mc_virtual_att_sp_pub.publish(att_sp);
+
+					} else if (vehicle_status.is_vtol && (vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING)) {
+						_fw_virtual_att_sp_pub.publish(att_sp);
+
+					} else {
+						_att_sp_pub.publish(att_sp);
+					}
+				}
+
+				/* Publish attitude rate setpoint if bodyrate and thrust ignore bits are not set */
+				if (!offboard_control_mode.ignore_bodyrate_x ||
+				    !offboard_control_mode.ignore_bodyrate_y ||
+				    !offboard_control_mode.ignore_bodyrate_z) {
+
+					vehicle_rates_setpoint_s rates_sp{};
+
+					rates_sp.timestamp = hrt_absolute_time();
+
+					// only copy att rates sp if message contained new data
+					if (!ignore_bodyrate_msg_x) {
+						rates_sp.roll = set_omni_attitude_target.body_roll_rate;
+					}
+
+					if (!ignore_bodyrate_msg_y) {
+						rates_sp.pitch = set_omni_attitude_target.body_pitch_rate;
+					}
+
+					if (!ignore_bodyrate_msg_z) {
+						rates_sp.yaw = set_omni_attitude_target.body_yaw_rate;
+					}
+
+					if (!offboard_control_mode.ignore_thrust) { // don't overwrite thrust if it's invalid
+						fill_thrust_omni(rates_sp.thrust_body, omni_attitude_status.att_mode, vehicle_status.vehicle_type, set_omni_attitude_target.thrust[0], set_omni_attitude_target.thrust[1], set_omni_attitude_target.thrust[2]);
 					}
 
 					_rates_sp_pub.publish(rates_sp);

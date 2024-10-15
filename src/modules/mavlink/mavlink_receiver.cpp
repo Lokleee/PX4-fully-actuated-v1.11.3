@@ -1432,7 +1432,7 @@ void MavlinkReceiver::fill_thrust_omni(float *thrust_body_array, int att_mode, u
 
 		default:
 			thrust_body_array[0] = thrust_x;
-			thrust_body_array[1] = thrust_y;
+			thrust_body_array[1] = -thrust_y;
 			thrust_body_array[2] = -thrust_z;
 
 			break;

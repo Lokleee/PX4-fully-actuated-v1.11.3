@@ -38,6 +38,7 @@
  */
 
 #include "zero_order_hover_thrust_ekf.hpp"
+// #include <px4_platform_common/defines.h>
 
 using matrix::sign;
 
@@ -51,6 +52,9 @@ void ZeroOrderHoverThrustEkf::predict(const float dt)
 
 void ZeroOrderHoverThrustEkf::fuseAccZ(const float acc_z, const float thrust, status &status_return)
 {
+	// PX4_INFO("---------------------------------------------------------");
+	// PX4_INFO("THE thrust: %f",double(thrust));
+	// PX4_INFO("THE _hover_thr 1: %f",double(_hover_thr));
 	const float H = computeH(thrust);
 	const float innov_var = computeInnovVar(H);
 	const float innov = computeInnov(acc_z, thrust);
@@ -70,6 +74,7 @@ void ZeroOrderHoverThrustEkf::fuseAccZ(const float acc_z, const float thrust, st
 		// is diverging. To recover, we bump the state variance
 		bumpStateVariance();
 	}
+	// PX4_INFO("THE _hover_thr 2: %f",double(_hover_thr));
 
 	const float signed_innov_test_ratio = sign(innov) * innov_test_ratio;
 	updateLpf(residual, signed_innov_test_ratio);
@@ -93,6 +98,8 @@ inline float ZeroOrderHoverThrustEkf::computeInnovVar(const float H) const
 float ZeroOrderHoverThrustEkf::computeInnov(const float acc_z, const float thrust) const
 {
 	const float predicted_acc_z = computePredictedAccZ(thrust);
+	// PX4_INFO("THE predicted_acc_z: %f",double(predicted_acc_z));
+	// PX4_INFO("THE acc_z: %f",double(acc_z));
 	return acc_z - predicted_acc_z;
 }
 

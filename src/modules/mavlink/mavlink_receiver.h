@@ -102,6 +102,7 @@
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_trajectory_bezier.h>
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
+#include <uORB/topics/omni_attitude_status.h>
 
 class Mavlink;
 
@@ -170,6 +171,7 @@ private:
 	void handle_message_serial_control(mavlink_message_t *msg);
 	void handle_message_set_actuator_control_target(mavlink_message_t *msg);
 	void handle_message_set_attitude_target(mavlink_message_t *msg);
+	void handle_message_set_omni_attitude_target(mavlink_message_t *msg);
 	void handle_message_set_mode(mavlink_message_t *msg);
 	void handle_message_set_position_target_local_ned(mavlink_message_t *msg);
 	void handle_message_set_position_target_global_int(mavlink_message_t *msg);
@@ -209,6 +211,8 @@ private:
 	bool evaluate_target_ok(int command, int target_system, int target_component);
 
 	void fill_thrust(float *thrust_body_array, uint8_t vehicle_type, float thrust);
+
+	void fill_thrust_omni(float *thrust_body_array, int att_mode, uint8_t vehicle_type, float thrust_x, float thrust_y, float thrust_z);
 
 	void schedule_tune(const char *tune);
 
@@ -282,6 +286,7 @@ private:
 	uORB::Subscription	_vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription	_vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription	_vehicle_status_sub{ORB_ID(vehicle_status)};
+	uORB::Subscription	_omni_attitude_status_sub{ORB_ID(omni_attitude_status)};
 
 	// hil_sensor and hil_state_quaternion
 	enum SensorSource {

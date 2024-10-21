@@ -768,16 +768,6 @@ PARAM_DEFINE_FLOAT(MPC_SPOOLUP_TIME, 1.0f);
 PARAM_DEFINE_INT32(MPC_YAW_MODE, 0);
 
 /**
- * Acceleration to tilt coupling
- *
- * Set to decouple tilt from vertical acceleration.
- *
- * @boolean
- * @group Multicopter Position Control
- */
-PARAM_DEFINE_INT32(MPC_ACC_DECOUPLE, 1);
-
-/**
  * Maximum direct-force (horizontal) scaled thrust for omnidirectional vehicles
  *
  * Specifies the maximum horizontal thrust compared to the maximum possible

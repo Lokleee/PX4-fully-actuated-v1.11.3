@@ -54,7 +54,7 @@ fi
 # Set mixer
 set MIXER hexa_x_tilt
 
-set MAV_TYPE 13
+# set MAV_TYPE 13
 
 # Need to set all 8 channels
 set PWM_OUT 12345678
